@@ -8,7 +8,7 @@ removeAll:
 clean: stopAll removeAll
 
 build:
-	docker build -t verademo .
+	docker build -t verademo --no-cache .
 
 run:
 	docker run -p 8080:8080 --platform linux/amd64 -it verademo

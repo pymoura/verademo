@@ -148,22 +148,35 @@ public class UserController {
 
 		Connection connect = null;
 		Statement sqlStatement = null;
-
+		String sqlQuery = "SELECT username, password, password_hint, created_at, last_login, real_name, blab_name " +
+				"FROM users WHERE username=? AND password=?;";
 		try {
 			// Get the Database Connection
 			logger.info("Creating the Database connection");
 			Class.forName("com.mysql.jdbc.Driver");
 			connect = DriverManager.getConnection(Constants.create().getJdbcConnectionString());
 
-			/* START BAD CODE */
 			// Execute the query
 			logger.info("Creating the Statement");
-			String sqlQuery = "select username, password, password_hint, created_at, last_login, real_name, blab_name from users where username='"
-					+ username + "' and password='" + md5(password) + "';";
-			sqlStatement = connect.createStatement();
+
+			PreparedStatement myLogin = connect.prepareStatement(sqlQuery);
+			myLogin.setString(1,username);
+			myLogin.setString(2,md5(password));
+			ResultSet result = myLogin.executeQuery();
+			logger.info(myLogin);
 			logger.info("Execute the Statement");
-			ResultSet result = sqlStatement.executeQuery(sqlQuery);
+
+
+			/* START BAD CODE */
+			// Execute the query
+//			logger.info("Creating the Statement");
+//			String sqlQuery = "select username, password, password_hint, created_at, last_login, real_name, blab_name from users where username='"
+//					+ username + "' and password='" + md5(password) + "';";
+//			sqlStatement = connect.createStatement();
+//			logger.info("Execute the Statement");
+//			ResultSet result = sqlStatement.executeQuery(sqlQuery);
 			/* END BAD CODE */
+
 
 			// Did we find exactly 1 user that matched?
 			if (result.first()) {
