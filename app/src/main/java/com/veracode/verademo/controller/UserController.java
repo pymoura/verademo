@@ -163,7 +163,7 @@ public class UserController {
 			myLogin.setString(1,username);
 			myLogin.setString(2,md5(password));
 			ResultSet result = myLogin.executeQuery();
-			logger.info(myLogin);
+			logger.info(myLogin + " - SQL Injection Mitigate");
 			logger.info("Execute the Statement");
 
 
