@@ -618,14 +618,22 @@ public class UserController {
 				new File(imageDir + oldImage).delete();
 			}
 
-			// TODO: check if file is png first
+			// Check if file is png or jpg first. Error message if it is an invalid file type
 			try {
 				String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-				String path = imageDir + username + extension;
 
-				logger.info("Saving new profile image: " + path);
-
-				file.transferTo(new File(path)); // will delete any existing file first
+				if(extension.equals(".png") || extension.equals(".jpg")) {
+					// Compose path to save image file. Use MD5 message-digest algorithm to hash username
+					String path = imageDir + md5(username) + extension;
+					logger.info("Saving new profile image: " + path);
+					file.transferTo(new File(path)); // will delete any existing file first
+				}
+				else{
+					logger.error("Invalid file type");
+					response.setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+					return "{\"message\": \"<script>alert('Invalid File Type error: Only files with the following " +
+							"extensions are allowed: png, jpg');</script>\"}";
+				}
 			} catch (IllegalStateException | IOException ex) {
 				logger.error(ex);
 			}
@@ -640,9 +648,9 @@ public class UserController {
 
 	@RequestMapping(value = "/downloadprofileimage", method = RequestMethod.GET)
 	public String downloadImage(
-			@RequestParam(value = "image", required = true) String imageName,
+			// Ignore user path input: @RequestParam(value = "image", required = true) String imageName,
 			HttpServletRequest request,
-			HttpServletResponse response) {
+			HttpServletResponse response) throws IOException {
 		logger.info("Entering downloadImage");
 
 		// Ensure user is logged in
@@ -655,7 +663,9 @@ public class UserController {
 
 		logger.info("User is Logged In - continuing...");
 
-		String path = context.getRealPath("/resources/images") + File.separator + imageName;
+		// Find profile picture based on logged sessionUsername
+		String path = context.getRealPath("/resources/images") + File.separator +
+				getProfileImageNameFromUsername(sessionUsername);
 
 		logger.info("Fetching profile image: " + path);
 
@@ -664,7 +674,7 @@ public class UserController {
 		try {
 			File downloadFile = new File(path);
 			inputStream = new FileInputStream(downloadFile);
-
+			String extension = downloadFile.getName().substring(downloadFile.getName().lastIndexOf("."));
 			// get MIME type of the file
 			String mimeType = context.getMimeType(path);
 			if (mimeType == null) {
@@ -676,7 +686,8 @@ public class UserController {
 			// Set content attributes for the response
 			response.setContentType(mimeType);
 			response.setContentLength((int) downloadFile.length());
-			response.setHeader("Content-Disposition", "attachment; filename=" + imageName);
+			//  Use MD5 message-digest algorithm to hash username
+			response.setHeader("Content-Disposition", "attachment; filename=" + md5(sessionUsername) + extension);
 
 			// get output stream of the response
 			outStream = response.getOutputStream();
@@ -706,7 +717,6 @@ public class UserController {
 				logger.error(ex);
 			}
 		}
-
 		return "profile";
 	}
 
@@ -809,12 +819,12 @@ public class UserController {
 			String oldImage = getProfileImageNameFromUsername(oldUsername);
 			if (oldImage != null) {
 				String extension = oldImage.substring(oldImage.lastIndexOf("."));
-
 				logger.info("Renaming profile image from " + oldImage + " to " + newUsername + extension);
 				String path = context.getRealPath("/resources/images") + File.separator;
 
 				File oldName = new File(path + oldImage);
-				File newName = new File(path + newUsername + extension);
+				// Use MD5 message-digest algorithm to hash username
+				File newName = new File(path + md5(newUsername) + extension);
 				oldName.renameTo(newName);
 			}
 
@@ -849,8 +859,9 @@ public class UserController {
 	private String getProfileImageNameFromUsername(final String username) {
 		File f = new File(context.getRealPath("/resources/images"));
 		File[] matchingFiles = f.listFiles(new FilenameFilter() {
+			// Look for matching file. Use MD5 message-digest algorithm to hash username
 			public boolean accept(File dir, String name) {
-				return name.startsWith(username + ".");
+				return name.startsWith(md5(username)+ ".");
 			}
 		});
 
